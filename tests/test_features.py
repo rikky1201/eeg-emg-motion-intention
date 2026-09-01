@@ -60,6 +60,19 @@ def test_make_windows_labels_centre():
     assert yw[0] == win // 2
 
 
+def test_transition_offset_refs():
+    # labels: 0 for 100 samples, then 1 for 100 -> single transition at idx 100
+    labels = np.r_[np.zeros(100, int), np.ones(100, int)]
+    refs, y = windowing.transition_offset_refs(labels, offset_samples=-30,
+                                               n_samples=len(labels), min_ref=50)
+    assert refs.tolist() == [70]          # 100 + (-30)
+    assert y.tolist() == [1]              # post-transition class
+    # ref below min_ref is dropped
+    refs, y = windowing.transition_offset_refs(labels, offset_samples=-60,
+                                               n_samples=len(labels), min_ref=50)
+    assert refs.size == 0 and y.size == 0
+
+
 def test_split_by_time_block_is_chronological():
     import pandas as pd
     df = pd.DataFrame({"t_sec": np.linspace(0, 10, 1000), "v": rng.standard_normal(1000)})

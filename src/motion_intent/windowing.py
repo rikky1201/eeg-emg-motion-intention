@@ -110,6 +110,36 @@ def transition_indices(labels: np.ndarray) -> np.ndarray:
     return np.where(labels[1:] != labels[:-1])[0] + 1
 
 
+def transition_offset_refs(
+    labels: np.ndarray,
+    offset_samples: int,
+    n_samples: int,
+    min_ref: int,
+):
+    """Window end-points placed at ``(each transition + offset_samples)``.
+
+    Used by the "how early can the upcoming movement be read out" analysis:
+    every label change is a candidate onset, and windows are re-centred around
+    it at a range of offsets.
+
+    Parameters
+    ----------
+    labels : (n_time,) class ids of one session
+    offset_samples : shift applied to every transition index (can be negative)
+    n_samples : session length, so refs past the end are dropped
+    min_ref : smallest valid end-point (usually the largest window length)
+
+    Returns
+    -------
+    refs : (k,) end-point sample indices, kept only if ``min_ref <= ref <= n_samples``
+    y : (k,) the **post-transition** class for each ref (the movement being started)
+    """
+    tr = transition_indices(labels)
+    refs = tr + int(offset_samples)
+    ok = (refs >= min_ref) & (refs <= n_samples)
+    return refs[ok], np.asarray(labels)[tr[ok]]
+
+
 # --------------------------------------------------------------------------- #
 # ragged-sequence padding (for the sequence models)
 # --------------------------------------------------------------------------- #
