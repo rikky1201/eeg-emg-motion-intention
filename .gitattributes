@@ -1,0 +1,5 @@
+# Normalise line endings: LF in the repo, native on checkout for scripts.
+* text=auto eol=lf
+*.ipynb text eol=lf
+*.png binary
+*.xdf binary

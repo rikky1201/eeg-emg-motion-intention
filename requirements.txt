@@ -1,0 +1,23 @@
+# core
+numpy
+pandas
+scipy
+scikit-learn
+
+# neurophysiology signal processing
+mne
+mne-icalabel
+asrpy
+pyxdf
+
+# deep learning (CPU wheels by default; see PyTorch site for CUDA builds)
+torch
+
+# visualization / notebooks
+matplotlib
+seaborn
+jupyterlab
+ipykernel
+
+# misc
+joblib
