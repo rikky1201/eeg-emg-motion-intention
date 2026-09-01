@@ -45,25 +45,10 @@ def test_mean_position_shape():
     assert features.extract_mean_position(motion).shape == (16, 12)
 
 
-def test_delta_slope_recovers_linear_trend():
-    fs = 1000
-    n_time = 500
-    slope_true = 3.0
-    t = np.arange(n_time) / fs
-    X = (slope_true * t)[None, None, :] + np.zeros((4, 2, n_time))
-    est = features.extract_delta_slope(X, fs=fs)
-    assert np.allclose(est, slope_true, rtol=1e-6)
-
-
 def test_env_features():
     out = features.build_env_features(10, 0.6, 0.3)
     assert out.shape == (10, 2)
     assert (out[:, 0] == 0.6).all() and (out[:, 1] == 0.3).all()
-
-
-def test_is_dynamic():
-    y = np.array([0, 1, 2, 3, 4, 5, 6])
-    assert features.is_dynamic(y).tolist() == [0, 0, 1, 1, 1, 1, 1]
 
 
 def test_make_windows_labels_centre():

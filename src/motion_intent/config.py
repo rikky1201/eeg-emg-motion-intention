@@ -39,9 +39,6 @@ CLASS_NAMES = [
 ]
 N_CLASSES = len(CLASS_NAMES)
 
-STATIC_CLASSES = [0, 1]
-DYNAMIC_CLASSES = [2, 3, 4, 5, 6]
-
 # --------------------------------------------------------------------------- #
 # EEG channels
 # --------------------------------------------------------------------------- #
@@ -95,11 +92,9 @@ MOTION_COLS = [f"Markers_{m}_XZ" for m in MOTION_MARKERS]
 # Frequency bands [Hz]
 # --------------------------------------------------------------------------- #
 EEG_BANDS = {
-    "delta": (0.1, 4.0),
     "alpha": (8.0, 13.0),
     "beta": (13.0, 30.0),
 }
-EEG_BROADBAND = (8.0, 30.0)   # mu + beta, used for the CSP branch
 EMG_BAND = (20.0, 450.0)
 
 # --------------------------------------------------------------------------- #
@@ -114,11 +109,6 @@ WIN_EEG = int(WIN_SEC_EEG * FS)
 WIN_EMG = int(WIN_SEC_EMG * FS)
 WIN_MOTION = int(WIN_SEC_MOTION * FS)
 STEP = int(STEP_SEC * FS)
-
-# --------------------------------------------------------------------------- #
-# CSP
-# --------------------------------------------------------------------------- #
-CSP_N_COMPONENTS = 4
 
 # --------------------------------------------------------------------------- #
 # Environment features (task geometry, constant within a session)
