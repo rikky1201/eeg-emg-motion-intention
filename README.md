@@ -80,7 +80,7 @@ eeg-emg-motion-intention/
 ## セットアップ
 
 ```bash
-git clone https://github.com/TODO_USER/eeg-emg-motion-intention.git
+git clone https://github.com/rikky1201/eeg-emg-motion-intention.git
 cd eeg-emg-motion-intention
 pip install -e .          # src/motion_intent をインストール
 # もしくは: pip install -r requirements.txt
@@ -111,9 +111,9 @@ pytest        # 合成配列で特徴量抽出の形状を検証
 
 ## Author
 
-**TODO: Your Name**
+**Rikuki NOBUHARA**
 Kyushu University
-[GitHub](https://github.com/TODO_USER)
+[GitHub](https://github.com/rikky1201)
 
 ## License
 

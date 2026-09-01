@@ -9,7 +9,7 @@ description = "Real-time movement-intention estimation from EEG, EMG and motion-
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
-authors = [{ name = "TODO: Your Name" }]
+authors = [{ name = "Rikuki NOBUHARA" }]
 dependencies = [
     "numpy",
     "pandas",
