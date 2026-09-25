@@ -73,10 +73,15 @@ def estimate_fs_from_time(t_sec: np.ndarray) -> float:
 def decimate_to(df: pd.DataFrame, cols, q: int, t_col: str = "t_sec") -> pd.DataFrame:
     """Anti-alias downsample ``cols`` by integer factor ``q`` (FIR, causal).
 
-    NaN gaps are linearly interpolated first. The time column is sub-sampled to
-    match. Returns a new DataFrame with ``cols`` + ``t_col``.
+    NaN gaps are filled forward (last known value held, i.e. zero-order-hold
+    extrapolation) rather than interpolated, since this pipeline is meant to
+    match what a real-time system could do - linear interpolation needs the
+    *next* known sample, which a live system doesn't have yet. Only the
+    leading gap (before the first real sample) falls back to the first
+    available value, since there is no earlier one to hold. The time column
+    is sub-sampled to match. Returns a new DataFrame with ``cols`` + ``t_col``.
     """
-    filled = df[cols].interpolate(method="linear", limit_direction="forward")
+    filled = df[cols].ffill().bfill()
     x = decimate(filled.to_numpy(), q=q, axis=0, ftype="fir", zero_phase=False)
     t = df[t_col].to_numpy()[::q][: len(x)]
     out = pd.DataFrame(x, columns=list(cols))
@@ -210,22 +215,33 @@ def clean_eeg(
     n_components: int = 30,
     asr_cutoff: float = 10.0,
     random_state: int = 42,
+    use_asr: bool = True,
 ) -> pd.DataFrame:
-    """Remove non-brain components (ICA + ICLabel) and burst artefacts (ASR).
+    """Remove non-brain components (ICA + ICLabel) and, optionally, burst artefacts (ASR).
 
     ``df`` holds EEG in microvolts. If ``df_calib`` is given (e.g. the output of
     :func:`extract_static_segments`) ICA / ASR are fitted on it and applied to
     ``df``; otherwise they are fitted on ``df`` itself.
 
+    ``use_asr=False`` skips the ASR step (ICA-only cleaning) - useful while the
+    installed ``asrpy`` is broken against the current numpy (raises
+    ``TypeError: only 0-dimensional arrays can be converted to Python
+    scalars`` inside ``asr_utils.fit_eeg_distribution``, a numpy-strictness
+    regression in that dependency, not something wrong with this pipeline).
+
     Returns a copy of ``df`` with ``eeg_cols`` replaced by the cleaned signal.
-    Requires ``mne``, ``mne_icalabel`` and ``asrpy``.
+    Requires ``mne`` and ``mne_icalabel``; additionally ``asrpy`` if ``use_asr``.
     """
     import mne
     from mne.preprocessing import ICA
     from mne_icalabel import label_components
-    import asrpy
 
-    info = mne.create_info(ch_names=list(eeg_cols), sfreq=fs, ch_types="eeg")
+    # `standard_1020` positions are keyed by bare channel names (e.g. "Cz");
+    # our columns carry the stream-type prefix from io_xdf ("EEG_Cz"), so a
+    # montage set with the prefixed names would match nothing and ICLabel
+    # would fail with every channel position "missing".
+    ch_names = [c.removeprefix("EEG_") for c in eeg_cols]
+    info = mne.create_info(ch_names=ch_names, sfreq=fs, ch_types="eeg")
 
     fit_src = df_calib if df_calib is not None else df
     raw_fit = mne.io.RawArray(fit_src[eeg_cols].to_numpy().T * 1e-6, info)
@@ -237,13 +253,17 @@ def clean_eeg(
     labels = label_components(raw_fit, ica, method="iclabel")["labels"]
     ica.exclude = [i for i, lab in enumerate(labels) if lab != "brain"]
 
-    asr = asrpy.ASR(sfreq=fs, cutoff=asr_cutoff)
-    asr.fit(ica.apply(raw_fit.copy()))
+    if use_asr:
+        import asrpy
+
+        asr = asrpy.ASR(sfreq=fs, cutoff=asr_cutoff)
+        asr.fit(ica.apply(raw_fit.copy()))
 
     raw = mne.io.RawArray(df[eeg_cols].to_numpy().T * 1e-6, info)
     raw.set_montage("standard_1020", on_missing="ignore")
     raw = ica.apply(raw)
-    raw = asr.transform(raw)
+    if use_asr:
+        raw = asr.transform(raw)
 
     out = df.copy()
     out[eeg_cols] = raw.get_data().T * 1e6

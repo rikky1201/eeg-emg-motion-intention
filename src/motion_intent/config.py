@@ -39,6 +39,20 @@ CLASS_NAMES = [
 ]
 N_CLASSES = len(CLASS_NAMES)
 
+# Session-ID number (in `ses-<id><speed>`, e.g. `ses-1431f`) -> the repeating
+# movement cycle recorded in that session, as hysteresis-thresholding roles
+# for `motion_intent.labeling.hysteresis_phases` (see there for the meaning
+# of low/high/rising/falling). Speed suffix (f/n/s = fast/normal/slow) only
+# changes pace, not the sequence of classes or the rep count (5, for all of
+# these session numbers).
+SESSION_PATTERNS = {
+    "19": {"feature": "heel_activity", "low": "stand", "high": "walk"},
+    "1431": {"feature": "hip_height", "low": "sit", "rising": "stand_up", "high": "stand", "falling": "sit_down"},
+    # 3-step staircase: stand at the bottom, ascend, stand at the top while
+    # turning around, descend, stand at the bottom again (next cycle).
+    "176": {"feature": "hip_height", "low": "stand", "rising": "ascending", "high": "stand", "falling": "descending"},
+}
+
 # --------------------------------------------------------------------------- #
 # EEG channels
 # --------------------------------------------------------------------------- #
@@ -60,21 +74,32 @@ EEG_CH_FEATURE = [
 # --------------------------------------------------------------------------- #
 # EMG channels
 # --------------------------------------------------------------------------- #
-# The raw CSV headers are Japanese muscle names with a " (uV)" suffix. This map
-# renames them to short romaji identifiers used everywhere downstream.
 #   RF = rectus femoris, TA = tibialis anterior,
 #   BF = biceps femoris, GM = gastrocnemius (medial head); _L / _R = side
-EMG_RENAME = {
-    "大腿直筋 左 (uV)": "emg_RF_L",
-    "大腿直筋 右 (uV)": "emg_RF_R",
-    "前脛骨筋 左 (uV)": "emg_TA_L",
-    "前脛骨筋 右 (uV)": "emg_TA_R",
-    "大腿二頭筋 右 (uV)": "emg_BF_R",
-    "大腿二頭筋 左 (uV)": "emg_BF_L",
-    "腓腹筋(内側) 右 (uV)": "emg_GM_R",
-    "腓腹筋(内側) 左 (uV)": "emg_GM_L",
-}
-EMG_COLS = list(EMG_RENAME.values())
+#
+# The XDF-merged CSV's EMG_Stream channels are generic ("EMG_EMG0".."EMG_EMG7"),
+# not muscle names, so the mapping to a physical sensor has to come from each
+# session's own raw device CSV (data/raw/<subject>/*.csv), whose header lists
+# the 8 muscles in wiring order. For subject haru this order is stable across
+# the whole recording day for channels 0-5, but the last two (gastrocnemius
+# medial L/R) come out swapped from ses-176n onward - the sensors were
+# apparently re-plugged in the opposite order partway through the session.
+EMG_CHANNEL_ORDER = ["RF_R", "RF_L", "TA_R", "TA_L", "BF_L", "BF_R", "GM_L", "GM_R"]
+EMG_GM_SWAP_SESSIONS = {"176n", "176f", "19n"}  # ses-<id><speed> recorded after the gastroc rewiring
+EMG_COLS = [f"emg_{name}" for name in EMG_CHANNEL_ORDER]
+
+
+def emg_rename_for(session_id: str) -> dict[str, str]:
+    """``{"EMG_EMG0": "emg_RF_R", ...}`` for one session, accounting for the
+    gastrocnemius L/R swap in :data:`EMG_GM_SWAP_SESSIONS`.
+
+    ``session_id`` is the full ``<number><speed>`` id, e.g. ``"176n"``
+    (unlike :data:`SESSION_PATTERNS`, which only needs the number).
+    """
+    order = list(EMG_CHANNEL_ORDER)
+    if session_id in EMG_GM_SWAP_SESSIONS:
+        order[-2], order[-1] = order[-1], order[-2]
+    return {f"EMG_EMG{i}": f"emg_{name}" for i, name in enumerate(order)}
 
 # --------------------------------------------------------------------------- #
 # Motion-capture markers (OptiTrack biomechanics marker set)
